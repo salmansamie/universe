@@ -222,6 +222,7 @@ class VNCClient(protocol.Protocol, object):
             self.expect(self.recv_FramebufferUpdate, 3)
         elif message_type == 1:
             # self.observer.server_data_block(block)
+            logger.info("XXX Calling recv_SetColorMapEntries")
             self.expect(self.recv_SetColorMapEntries, 5)
         elif message_type == 2:
             # self.observer.server_data_block(block)
@@ -330,6 +331,8 @@ class VNCClient(protocol.Protocol, object):
             self.expect(self.recv_SetColorMapEntries_color, 6, first_color, number_of_colors-1, colors)
         else:
             # self.observer.server_set_color_map_entries(first_color, colors)
+            self.framebuffer.color_map[first_color:first_color + len(colors), :] = colors
+            logger.info("XXX Setting {} colors".format(len(colors)))
             self.expect(self.recv_ServerToClient, 1)
 
     def recv_SetColorMapEntries_color(self, block, first_color, number_of_colors, colors):
@@ -362,6 +365,14 @@ class VNCClient(protocol.Protocol, object):
             raise error.Error('Framebuffer not initialized. We have not yet added support for queuing PixelFormat messages before initialization')
         server_pixel_format = struct.pack("!BBBBHHHBBBxxx", bpp, depth, bigendian, truecolor, redmax, greenmax, bluemax, redshift, greenshift, blueshift)
         self.sendMessage(struct.pack("!Bxxx16s", 0, server_pixel_format))
+
+        logger.info("XXX Called send_PixelFormat: {}".format(truecolor))
+        if not truecolor:
+            logger.info("Creating frame_buffer")
+            # truecolor is false. This means that we are using a color_map
+            # https://github.com/rfbproto/rfbproto/blob/master/rfbproto.rst#setpixelformat
+            self.framebuffer.color_map = np.zeros((256, 3))
+
         self.framebuffer.apply_format(server_pixel_format)
 
     def send_FramebufferUpdateRequest(self, x=0, y=0, width=None, height=None, incremental=0):

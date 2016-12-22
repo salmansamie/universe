@@ -58,15 +58,12 @@ class RAWEncoding(object):
     @classmethod
     def parse_rectangle(cls, client, x, y, width, height, data):
 
-        colourmap =  np.repeat(np.arange(256)[:, np.newaxis], 3, axis=1)
-
         data = np.frombuffer(data, np.uint8).reshape((height, width, client.framebuffer.bypp))
         if client.framebuffer.bypp == 4:
             reshaped_data = data[:, :, [0, 1, 2]] # Drop the alpha channel
         elif client.framebuffer.bypp == 1:
             # http://stackoverflow.com/questions/14448763/is-there-a-convenient-way-to-apply-a-lookup-table-to-a-large-array-in-numpy
-            reshaped_data = colourmap[data[:,:,0]] # Look up all values in the colourmap
-            # import ipdb; ipdb.set_trace()
+            reshaped_data = client.framebuffer.color_map[data[:,:,0]] # Look up all values in the colormap
         else:
             raise error.Error("framebuffer bytes per pixel of {} is not supported".format(client.framebuffer.bypp))
 
